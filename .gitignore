@@ -1,0 +1,17 @@
+#variables de entorno
+.env
+.env.local
+.env.production
+.env.development
+#Sistema operativo
+.Ds_Store
+# Logs
+*. log
+# Dependencias futuras
+node_modules/
+vendor/
+venv/
+__pycache__/
+# Builds futuros
+dist/
+build/
