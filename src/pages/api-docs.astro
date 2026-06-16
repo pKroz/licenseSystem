@@ -1,0 +1,59 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Documentación API">
+  <div style="max-width:860px;">
+
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-body">
+        <span style="font-weight:600;font-size:0.875rem;">Base URL &nbsp;</span>
+        <code style="background:var(--color-surface-alt);padding:0.375rem 0.75rem;border-radius:6px;font-family:var(--font-mono);font-size:0.875rem;">http://localhost/licenseflow/api</code>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-header"><span class="card-title">📋 Endpoints</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metodo</th><th>Ruta</th><th>Descripcion</th><th>Permisos</th></tr></thead>
+          <tbody id="ep-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-header"><span class="card-title">Validacion publica</span></div>
+      <div class="card-body">
+        <pre style="background:#0F172A;color:#E2E8F0;border-radius:8px;padding:1rem;font-size:0.78rem;overflow-x:auto;">POST /api/validate
+X-API-Key: lf_test_key_abc123xyz789
+
+&#123;
+  "license_key": "XXXX-XXXX-XXXX-XXXX",
+  "domain": "miapp.com"
+}</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Probar validacion</span></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input type="text" id="test-apikey" class="form-control" value="lf_test_key_abc123xyz789" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">License Key</label>
+          <input type="text" id="test-key" class="form-control" placeholder="XXXX-XXXX-XXXX-XXXX" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dominio (opcional)</label>
+          <input type="text" id="test-domain" class="form-control" placeholder="miapp.com" />
+        </div>
+        <button id="test-btn" class="btn btn-primary">Validar licencia</button>
+        <div id="test-result" style="margin-top:1rem;display:none;"></div>
+      </div>
+    </div>
+
+  </div>
+  <script src="/api-docs.js" is:inline></script>
+</AppLayout>

@@ -1,0 +1,131 @@
+---
+const { title = 'LicenseFlow' } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} — LicenseFlow</title>
+  <link rel="stylesheet" href="/global.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🔑</div>
+        <div>
+          <div class="sidebar-logo-text">LicenseFlow</div>
+          <div class="sidebar-logo-sub">Panel de control</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <span class="sidebar-section">Principal</span>
+        <a href="/dashboard" class="nav-item" data-page="dashboard"><span class="nav-item-icon">📊</span> Dashboard</a>
+        <a href="/licenses" class="nav-item" data-page="licenses"><span class="nav-item-icon">🔑</span> Licencias</a>
+        <a href="/clients" class="nav-item" data-page="clients"><span class="nav-item-icon">🏢</span> Clientes</a>
+        <a href="/products" class="nav-item" data-page="products"><span class="nav-item-icon">📦</span> Productos</a>
+        <span class="sidebar-section">Gestión</span>
+        <a href="/users" class="nav-item" data-page="users" data-roles="administrador"><span class="nav-item-icon">👥</span> Usuarios</a>
+        <a href="/audit" class="nav-item" data-page="audit" data-roles="administrador,auditor"><span class="nav-item-icon">📋</span> Auditoría</a>
+        <span class="sidebar-section">API</span>
+        <a href="/api-docs" class="nav-item" data-page="api-docs"><span class="nav-item-icon">⚡</span> Documentación API</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar" id="sidebar-avatar">Ad</div>
+          <div style="flex:1;min-width:0;">
+            <div class="user-name truncate" id="sidebar-name">Cargando...</div>
+            <div class="user-role" id="sidebar-role">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="logout-btn" style="padding:4px 6px;color:rgba(255,255,255,0.5);">⏻</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <header class="top-bar">
+        <div class="flex items-center gap-3">
+          <button class="btn-menu-toggle hidden-lg" id="menu-toggle" style="padding:6px;margin:-6px;color:var(--color-text-primary);">☰</button>
+          <h1 class="page-title" style="margin:0;font-size:1.1rem;">{title}</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="header-user-name" style="font-size:0.85rem;color:var(--color-text-secondary);"></span>
+          <div id="header-badge" class="badge badge-info" style="font-size:0.7rem;"></div>
+        </div>
+      </header>
+      <main class="page-content">
+        <slot />
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;display:none;max-width:340px;"></div>
+
+  <script src="/api.js" is:inline></script>
+  <script>
+    const user = window._api.getUser();
+    const token = window._api.getToken();
+
+    if (!user || !token) {
+      window.location.href = '/login';
+    } else {
+      document.getElementById('sidebar-name').textContent = user.full_name;
+      document.getElementById('sidebar-role').textContent = user.role;
+      document.getElementById('sidebar-avatar').textContent = user.full_name.slice(0,2).toUpperCase();
+      document.getElementById('header-user-name').textContent = user.full_name;
+      document.getElementById('header-badge').textContent = user.role;
+
+      document.querySelectorAll('[data-roles]').forEach(el => {
+        const roles = el.dataset.roles.split(',');
+        if (!roles.includes(user.role)) el.style.display = 'none';
+      });
+
+      const path = window.location.pathname.split('/').pop() || 'dashboard';
+      document.querySelectorAll('.nav-item').forEach(el => {
+        if (el.dataset.page === path) el.classList.add('active');
+      });
+    }
+
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+      window._api.clearSession();
+      window.location.href = '/login';
+    });
+
+    // Hamburger menu toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const appLayout = document.querySelector('.app-layout');
+    if (menuToggle && sidebar) {
+      menuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        appLayout.classList.toggle('sidebar-open');
+      });
+      // Close sidebar when clicking on a link
+      sidebar.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', () => {
+          sidebar.classList.remove('open');
+          appLayout.classList.remove('sidebar-open');
+        });
+      });
+      // Close sidebar when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+          sidebar.classList.remove('open');
+          appLayout.classList.remove('sidebar-open');
+        }
+      });
+    }
+
+    window.showToast = function(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const colors = { success: '#10B981', danger: '#EF4444', warning: '#F59E0B', info: '#3B82F6' };
+      toast.innerHTML = `<div style="background:${colors[type]};color:white;padding:0.875rem 1.25rem;border-radius:10px;font-size:0.875rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);">${message}</div>`;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    };
+  </script>
+</body>
+</html>

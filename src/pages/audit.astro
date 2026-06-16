@@ -1,0 +1,66 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Auditoría">
+  <div class="flex items-center gap-2 mb-4" style="flex-wrap:wrap;gap:0.5rem;">
+    <select id="f-entity" class="form-control" style="width:auto;min-width:150px;"><option value="">Todas entidades</option><option value="license">Licencias</option><option value="client">Clientes</option><option value="user">Usuarios</option><option value="product">Productos</option></select>
+    <select id="f-action" class="form-control" style="width:auto;min-width:130px;"><option value="">Todas acciones</option><option value="CREATE">Crear</option><option value="UPDATE">Actualizar</option><option value="DELETE">Eliminar</option></select>
+    <input type="date" id="f-from" class="form-control" style="width:auto;min-width:130px;" />
+    <input type="date" id="f-to" class="form-control" style="width:auto;min-width:130px;" />
+    <button class="btn btn-secondary btn-sm" id="apply-btn" style="white-space:nowrap;">Filtrar</button>
+    <button class="btn btn-ghost btn-sm" id="clear-btn" style="white-space:nowrap;">Limpiar</button>
+    <div class="ml-auto"><button class="btn btn-secondary btn-sm" id="export-btn" style="white-space:nowrap;">📥 CSV</button></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">📋 Registro de auditoría</span><span class="badge badge-info" id="count-badge">—</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Acción</th><th>Entidad</th><th>ID</th><th>IP</th><th>Detalle</th></tr></thead>
+        <tbody id="table-body"><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--color-text-muted);">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+    <div style="padding:1rem 1.25rem;border-top:1px solid var(--color-border);display:flex;gap:0.75rem;align-items:center;">
+      <button class="btn btn-secondary btn-sm" id="prev-btn" disabled>← Anterior</button>
+      <span id="page-info" style="font-size:0.8125rem;color:var(--color-text-muted);"></span>
+      <button class="btn btn-secondary btn-sm" id="next-btn">Siguiente →</button>
+    </div>
+  </div>
+  <script>
+    let offset=0, total=0, logs=[];
+    const LIMIT=50;
+    const ac={CREATE:'badge-active',UPDATE:'badge-info',DELETE:'badge-expired'};
+    const el={license:'Licencia',client:'Cliente',user:'Usuario',product:'Producto'};
+    function getFilters(){return{entity:document.getElementById('f-entity').value,action:document.getElementById('f-action').value,from:document.getElementById('f-from').value,to:document.getElementById('f-to').value,limit:LIMIT,offset};}
+    async function load(){
+      try{
+        const data=await window._api.getAuditLogs(getFilters());
+        logs=data.data||[]; total=data.total||0;
+        document.getElementById('count-badge').textContent=total+' registros';
+        document.getElementById('page-info').textContent=`${offset+1}–${Math.min(offset+LIMIT,total)} de ${total}`;
+        document.getElementById('prev-btn').disabled=offset===0;
+        document.getElementById('next-btn').disabled=offset+LIMIT>=total;
+        const tbody=document.getElementById('table-body');
+        if(!logs.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div>Sin registros</div></td></tr>';return;}
+        tbody.innerHTML=logs.map(l=>`<tr>
+          <td style="font-size:0.8rem;white-space:nowrap;">${new Date(l.created_at).toLocaleString('es-PE')}</td>
+          <td style="font-size:0.8rem;font-weight:500;">${l.user_name||'—'}</td>
+          <td style="font-size:0.75rem;text-transform:capitalize;">${l.user_role||'—'}</td>
+          <td><span class="badge ${ac[l.action]||'badge-cancelled'}" style="font-size:0.7rem;">${l.action}</span></td>
+          <td style="font-size:0.8rem;">${el[l.entity]||l.entity}</td>
+          <td style="font-size:0.8rem;font-family:var(--font-mono);">${l.entity_id||'—'}</td>
+          <td style="font-size:0.75rem;color:var(--color-text-muted);">${l.ip_address||'—'}</td>
+          <td style="font-size:0.75rem;max-width:150px;" class="truncate">${l.details||'—'}</td>
+        </tr>`).join('');
+      }catch(e){window.showToast('Error: '+e.message,'danger');}
+    }
+    document.getElementById('apply-btn').addEventListener('click',()=>{offset=0;load();});
+    document.getElementById('clear-btn').addEventListener('click',()=>{['f-entity','f-action','f-from','f-to'].forEach(id=>document.getElementById(id).value='');offset=0;load();});
+    document.getElementById('prev-btn').addEventListener('click',()=>{if(offset>=LIMIT){offset-=LIMIT;load();}});
+    document.getElementById('next-btn').addEventListener('click',()=>{if(offset+LIMIT<total){offset+=LIMIT;load();}});
+    document.getElementById('export-btn').addEventListener('click',()=>{
+      const csv=[['Fecha','Usuario','Rol','Acción','Entidad','ID','IP','Detalle'],...logs.map(l=>[l.created_at,l.user_name||'',l.user_role||'',l.action,l.entity,l.entity_id||'',l.ip_address||'',l.details||''])].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+      const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='auditoria.csv';a.click();
+    });
+    load();
+  </script>
+</AppLayout>

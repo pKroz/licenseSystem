@@ -1,0 +1,101 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Clientes">
+  <div class="flex items-center gap-2 mb-4">
+    <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Buscar empresa, RUC, correo..." /></div>
+    <div class="ml-auto"><button class="btn btn-primary" id="create-btn">+ Nuevo cliente</button></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Clientes registrados</span><span class="badge badge-info" id="count-badge">—</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Empresa</th><th>RUC/DNI</th><th>Correo</th><th>Teléfono</th><th>Representante</th><th>Lic. activas</th><th>Acciones</th></tr></thead>
+        <tbody id="table-body"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-text-muted);">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title" id="modal-title">Nuevo cliente</span><button class="btn btn-ghost btn-sm" id="close-modal">✕</button></div>
+      <div class="modal-body">
+        <div id="modal-error" class="alert alert-danger hidden"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Razón social *</label><input type="text" id="f-name" class="form-control" /></div>
+          <div class="form-group"><label class="form-label">Tipo</label><select id="f-type" class="form-control"><option value="empresa">Empresa</option><option value="persona">Persona natural</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">RUC / DNI</label><input type="text" id="f-ruc" class="form-control" /></div>
+          <div class="form-group"><label class="form-label">Correo *</label><input type="email" id="f-email" class="form-control" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Teléfono</label><input type="tel" id="f-phone" class="form-control" /></div>
+          <div class="form-group"><label class="form-label">Representante</label><input type="text" id="f-rep" class="form-control" /></div>
+        </div>
+        <div class="form-group"><label class="form-label">Dirección</label><textarea id="f-address" class="form-control" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" id="cancel-modal">Cancelar</button><button class="btn btn-primary" id="save-btn">Guardar</button></div>
+    </div>
+  </div>
+  <script>
+    let all = [], editId = null;
+    async function load(search='') {
+      try {
+        all = await window._api.getClients(search);
+        document.getElementById('count-badge').textContent = all.length + ' clientes';
+        const tbody = document.getElementById('table-body');
+        if (!all.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🏢</div>Sin clientes</div></td></tr>'; return; }
+        tbody.innerHTML = all.map(c=>`<tr>
+          <td><div style="font-weight:500;">${c.company_name}</div><div style="font-size:0.75rem;color:var(--color-text-muted);">${c.type==='empresa'?'Empresa':'Persona'}</div></td>
+          <td class="font-mono" style="font-size:0.8rem;">${c.ruc_dni||'—'}</td>
+          <td style="font-size:0.8rem;">${c.email}</td>
+          <td style="font-size:0.8rem;">${c.phone||'—'}</td>
+          <td style="font-size:0.8rem;">${c.representative||'—'}</td>
+          <td><span class="badge ${c.active_licenses>0?'badge-active':'badge-cancelled'}">${c.active_licenses||0}</span></td>
+          <td><div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm" onclick="edit(${c.id})">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--color-danger);" onclick="del(${c.id},'${c.company_name.replace(/'/g,"\\'")}')">🗑</button>
+          </div></td>
+        </tr>`).join('');
+      } catch(e) { window.showToast('Error: '+e.message,'danger'); }
+    }
+    let t; document.getElementById('search-input').addEventListener('input', e=>{ clearTimeout(t); t=setTimeout(()=>load(e.target.value),300); });
+    document.getElementById('create-btn').addEventListener('click', ()=>open(null));
+    document.getElementById('close-modal').addEventListener('click', close);
+    document.getElementById('cancel-modal').addEventListener('click', close);
+    document.getElementById('modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) close(); });
+    function open(id) {
+      editId=id; document.getElementById('modal-title').textContent=id?'Editar cliente':'Nuevo cliente';
+      document.getElementById('modal-error').classList.add('hidden');
+      if(!id) ['f-name','f-ruc','f-email','f-phone','f-rep','f-address'].forEach(i=>document.getElementById(i).value='');
+      document.getElementById('modal').classList.remove('hidden');
+    }
+    function close() { document.getElementById('modal').classList.add('hidden'); editId=null; }
+    window.edit = (id) => {
+      const c=all.find(x=>x.id===id); if(!c) return; open(id);
+      document.getElementById('f-name').value=c.company_name; document.getElementById('f-type').value=c.type;
+      document.getElementById('f-ruc').value=c.ruc_dni||''; document.getElementById('f-email').value=c.email;
+      document.getElementById('f-phone').value=c.phone||''; document.getElementById('f-rep').value=c.representative||'';
+      document.getElementById('f-address').value=c.address||'';
+    };
+    document.getElementById('save-btn').addEventListener('click', async ()=>{
+      const btn=document.getElementById('save-btn'), errEl=document.getElementById('modal-error');
+      errEl.classList.add('hidden');
+      const payload={company_name:document.getElementById('f-name').value.trim(),type:document.getElementById('f-type').value,ruc_dni:document.getElementById('f-ruc').value.trim(),email:document.getElementById('f-email').value.trim(),phone:document.getElementById('f-phone').value.trim(),representative:document.getElementById('f-rep').value.trim(),address:document.getElementById('f-address').value.trim()};
+      if(!payload.company_name||!payload.email){errEl.textContent='Nombre y correo requeridos.';errEl.classList.remove('hidden');return;}
+      btn.disabled=true; btn.textContent='Guardando...';
+      try {
+        if(editId){await window._api.updateClient(editId,payload);window.showToast('Cliente actualizado','success');}
+        else{await window._api.createClient(payload);window.showToast('Cliente creado','success');}
+        close(); load();
+      } catch(e){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+      finally{btn.disabled=false;btn.textContent='Guardar';}
+    });
+    window.del = async(id,name)=>{
+      if(!confirm(`¿Eliminar "${name}"?`)) return;
+      try{await window._api.deleteClient(id);window.showToast('Cliente eliminado','success');load();}
+      catch(e){window.showToast('Error: '+e.message,'danger');}
+    };
+    load();
+  </script>
+</AppLayout>
