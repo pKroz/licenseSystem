@@ -1,0 +1,76 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Usuarios">
+  <div class="flex items-center gap-2 mb-4" style="flex-wrap:wrap;"><div class="ml-auto"><button class="btn btn-primary btn-sm" id="create-btn" style="white-space:nowrap;">+ Nuevo usuario</button></div></div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Usuarios del sistema</span><span class="badge badge-info" id="count-badge">—</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Registrado</th><th>Acciones</th></tr></thead>
+        <tbody id="table-body"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-text-muted);">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title" id="modal-title">Nuevo usuario</span><button class="btn btn-ghost btn-sm" id="close-modal">✕</button></div>
+      <div class="modal-body">
+        <div id="modal-error" class="alert alert-danger hidden"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Username *</label><input type="text" id="f-username" class="form-control" /></div>
+          <div class="form-group"><label class="form-label">Nombre completo *</label><input type="text" id="f-fullname" class="form-control" /></div>
+        </div>
+        <div class="form-group"><label class="form-label">Correo *</label><input type="email" id="f-email" class="form-control" /></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Contraseña <span id="pass-hint" style="font-weight:400;color:var(--color-text-muted);">(requerida)</span></label><input type="password" id="f-password" class="form-control" /></div>
+          <div class="form-group"><label class="form-label">Rol *</label>
+            <select id="f-role" class="form-control"><option value="cliente">Cliente</option><option value="vendedor">Vendedor</option><option value="soporte">Soporte</option><option value="auditor">Auditor</option><option value="administrador">Administrador</option></select>
+          </div>
+        </div>
+        <div class="form-group" id="status-grp" style="display:none;"><label class="form-label">Estado</label><select id="f-status" class="form-control"><option value="active">Activo</option><option value="suspended">Suspendido</option></select></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" id="cancel-modal">Cancelar</button><button class="btn btn-primary" id="save-btn">Guardar</button></div>
+    </div>
+  </div>
+  <script>
+    let all=[], editId=null;
+    const roleBadge=r=>{const c={administrador:'badge-expired',vendedor:'badge-active',soporte:'badge-info',auditor:'badge-suspended',cliente:'badge-cancelled'};return`<span class="badge ${c[r]||'badge-cancelled'}" style="text-transform:capitalize;">${r}</span>`;};
+    async function load(){
+      try{
+        all=await window._api.getUsers();
+        document.getElementById('count-badge').textContent=all.length+' usuarios';
+        const tbody=document.getElementById('table-body');
+        if(!all.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👥</div>Sin usuarios</div></td></tr>';return;}
+        tbody.innerHTML=all.map(u=>`<tr>
+          <td><span class="font-mono" style="font-size:0.8rem;">@${u.username}</span></td>
+          <td style="font-weight:500;">${u.full_name}</td><td style="font-size:0.8rem;">${u.email}</td>
+          <td>${roleBadge(u.role)}</td>
+          <td><span class="badge ${u.status==='active'?'badge-active':'badge-cancelled'}">${u.status==='active'?'Activo':'Suspendido'}</span></td>
+          <td style="font-size:0.8rem;color:var(--color-text-muted);">${new Date(u.created_at).toLocaleDateString('es-PE')}</td>
+          <td><div class="flex gap-2"><button class="btn btn-ghost btn-sm" onclick="edit(${u.id})">✏️</button><button class="btn btn-ghost btn-sm" style="color:var(--color-danger);" onclick="del(${u.id},'${u.username}')">🗑</button></div></td>
+        </tr>`).join('');
+      }catch(e){window.showToast('Error: '+e.message,'danger');}
+    }
+    document.getElementById('create-btn').addEventListener('click',()=>open(null));
+    document.getElementById('close-modal').addEventListener('click',close);
+    document.getElementById('cancel-modal').addEventListener('click',close);
+    document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)close();});
+    function open(id){editId=id;document.getElementById('modal-title').textContent=id?'Editar usuario':'Nuevo usuario';document.getElementById('modal-error').classList.add('hidden');document.getElementById('f-username').disabled=!!id;document.getElementById('pass-hint').textContent=id?'(dejar vacío para no cambiar)':'(requerida)';document.getElementById('status-grp').style.display=id?'block':'none';if(!id)['f-username','f-fullname','f-email','f-password'].forEach(i=>document.getElementById(i).value='');document.getElementById('modal').classList.remove('hidden');}
+    function close(){document.getElementById('modal').classList.add('hidden');editId=null;}
+    window.edit=(id)=>{const u=all.find(x=>x.id===id);if(!u)return;open(id);document.getElementById('f-username').value=u.username;document.getElementById('f-fullname').value=u.full_name;document.getElementById('f-email').value=u.email;document.getElementById('f-role').value=u.role;document.getElementById('f-status').value=u.status;document.getElementById('f-password').value='';};
+    document.getElementById('save-btn').addEventListener('click',async()=>{
+      const btn=document.getElementById('save-btn'),errEl=document.getElementById('modal-error');errEl.classList.add('hidden');
+      const payload={username:document.getElementById('f-username').value.trim(),full_name:document.getElementById('f-fullname').value.trim(),email:document.getElementById('f-email').value.trim(),role:document.getElementById('f-role').value,status:document.getElementById('f-status').value,password:document.getElementById('f-password').value};
+      if(!payload.full_name||!payload.email){errEl.textContent='Nombre y correo requeridos.';errEl.classList.remove('hidden');return;}
+      if(!editId&&!payload.password){errEl.textContent='La contraseña es requerida para usuarios nuevos.';errEl.classList.remove('hidden');return;}
+      if(editId&&payload.password.length>0&&payload.password.length<6){errEl.textContent='La contraseña debe tener al menos 6 caracteres.';errEl.classList.remove('hidden');return;}
+      btn.disabled=true;btn.textContent='Guardando...';
+      try{if(editId){await window._api.updateUser(editId,payload);window.showToast('Usuario actualizado','success');}else{await window._api.createUser(payload);window.showToast('Usuario creado','success');}close();load();}
+      catch(e){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+      finally{btn.disabled=false;btn.textContent='Guardar';}
+    });
+    window.del=async(id,u)=>{if(!confirm(`¿Eliminar @${u}?`))return;try{await window._api.deleteUser(id);window.showToast('Usuario eliminado','success');load();}catch(e){window.showToast('Error: '+e.message,'danger');}};
+    load();
+  </script>
+</AppLayout>

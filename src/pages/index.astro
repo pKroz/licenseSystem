@@ -1,0 +1,34 @@
+---
+// src/pages/index.astro
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redirigiendo — LicenseFlow</title>
+</head>
+<body style="margin:0;padding:0;background:#F8FAFC;">
+  <div style="width:100%;height:100vh;display:flex;align-items:center;justify-content:center;">
+    <div style="text-align:center;">
+      <div style="font-size:2rem;margin-bottom:1rem;">🔄</div>
+      <p style="color:#666;font-family:sans-serif;">Cargando...</p>
+    </div>
+  </div>
+
+  <script src="/api.js" is:inline></script>
+  <script>
+    // Check if user has valid session
+    const token = window._api.getToken();
+    const user = window._api.getUser();
+
+    if (token && user) {
+      // User is authenticated, go to dashboard
+      window.location.href = '/dashboard';
+    } else {
+      // User is not authenticated, go to login
+      window.location.href = '/login';
+    }
+  </script>
+</body>
+</html>

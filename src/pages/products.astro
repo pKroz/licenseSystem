@@ -1,0 +1,73 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Productos">
+  <div class="flex items-center gap-2 mb-4" style="flex-wrap:wrap;"><div class="ml-auto"><button class="btn btn-primary btn-sm" id="create-btn" style="white-space:nowrap;">+ Nuevo</button></div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;" id="grid">
+    <div style="text-align:center;padding:2rem;color:var(--color-text-muted);">Cargando...</div>
+  </div>
+  <div class="modal-overlay hidden" id="modal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title" id="modal-title">Nuevo producto</span><button class="btn btn-ghost btn-sm" id="close-modal">✕</button></div>
+      <div class="modal-body">
+        <div id="modal-error" class="alert alert-danger hidden"></div>
+        <div class="form-group"><label class="form-label">Nombre *</label><input type="text" id="f-name" class="form-control" /></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Versión</label><input type="text" id="f-version" class="form-control" placeholder="1.0.0" /></div>
+          <div class="form-group"><label class="form-label">Estado</label><select id="f-status" class="form-control"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></div>
+        </div>
+        <div class="form-group"><label class="form-label">Descripción</label><textarea id="f-desc" class="form-control" rows="3"></textarea></div>
+        <div class="form-group"><label class="form-label">Módulos</label><input type="text" id="f-modules" class="form-control" placeholder="dashboard, reportes, api" /><div class="form-hint">Separados por comas</div></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" id="cancel-modal">Cancelar</button><button class="btn btn-primary" id="save-btn">Guardar</button></div>
+    </div>
+  </div>
+  <script>
+    let all=[], editId=null;
+    async function load() {
+      try {
+        all = await window._api.getProducts();
+        const grid = document.getElementById('grid');
+        if(!all.length){grid.innerHTML='<div class="empty-state"><div class="empty-icon">📦</div>Sin productos</div>';return;}
+        grid.innerHTML = all.map(p=>{
+          const mods=p.modules?JSON.parse(p.modules):[];
+          return `<div class="card" style="padding:1.25rem;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.75rem;">
+              <div><div style="font-weight:600;font-size:1rem;">${p.name}</div><div style="font-size:0.75rem;color:var(--color-text-muted);">v${p.version||'—'}</div></div>
+              <span class="badge ${p.status==='active'?'badge-active':'badge-cancelled'}">${p.status==='active'?'Activo':'Inactivo'}</span>
+            </div>
+            <p style="font-size:0.8125rem;color:var(--color-text-secondary);margin-bottom:1rem;min-height:2.5rem;">${p.description||'Sin descripción.'}</p>
+            ${mods.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;">${mods.map(m=>`<span class="badge badge-info" style="font-size:0.7rem;">${m}</span>`).join('')}</div>`:''}
+            <hr class="divider" style="margin:0.75rem 0;"/>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:0.75rem;color:var(--color-text-muted);">${p.active_licenses||0} activas</span>
+              <div class="flex gap-2">
+                <button class="btn btn-secondary btn-sm" onclick="edit(${p.id})">✏️ Editar</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--color-danger);" onclick="del(${p.id},'${p.name.replace(/'/g,"\\'")}')">🗑</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      } catch(e){window.showToast('Error: '+e.message,'danger');}
+    }
+    document.getElementById('create-btn').addEventListener('click',()=>open(null));
+    document.getElementById('close-modal').addEventListener('click',close);
+    document.getElementById('cancel-modal').addEventListener('click',close);
+    document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)close();});
+    function open(id){editId=id;document.getElementById('modal-title').textContent=id?'Editar producto':'Nuevo producto';document.getElementById('modal-error').classList.add('hidden');if(!id){['f-name','f-version','f-desc','f-modules'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-status').value='active';}document.getElementById('modal').classList.remove('hidden');}
+    function close(){document.getElementById('modal').classList.add('hidden');editId=null;}
+    window.edit=(id)=>{const p=all.find(x=>x.id===id);if(!p)return;open(id);document.getElementById('f-name').value=p.name;document.getElementById('f-version').value=p.version||'';document.getElementById('f-status').value=p.status;document.getElementById('f-desc').value=p.description||'';document.getElementById('f-modules').value=p.modules?JSON.parse(p.modules).join(', '):'';}
+    document.getElementById('save-btn').addEventListener('click',async()=>{
+      const btn=document.getElementById('save-btn'),errEl=document.getElementById('modal-error');errEl.classList.add('hidden');
+      const mraw=document.getElementById('f-modules').value;
+      const payload={name:document.getElementById('f-name').value.trim(),version:document.getElementById('f-version').value.trim(),status:document.getElementById('f-status').value,description:document.getElementById('f-desc').value.trim(),modules:mraw?mraw.split(',').map(m=>m.trim()).filter(Boolean):[]};
+      if(!payload.name){errEl.textContent='Nombre requerido.';errEl.classList.remove('hidden');return;}
+      btn.disabled=true;btn.textContent='Guardando...';
+      try{if(editId){await window._api.updateProduct(editId,payload);window.showToast('Producto actualizado','success');}else{await window._api.createProduct(payload);window.showToast('Producto creado','success');}close();load();}
+      catch(e){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+      finally{btn.disabled=false;btn.textContent='Guardar';}
+    });
+    window.del=async(id,name)=>{if(!confirm(`¿Desactivar "${name}"?`))return;try{await window._api.deleteProduct(id);window.showToast('Desactivado','success');load();}catch(e){window.showToast('Error: '+e.message,'danger');}};
+    load();
+  </script>
+</AppLayout>

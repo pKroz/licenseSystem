@@ -1,0 +1,185 @@
+---
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar sesión — LicenseFlow</title>
+  <link rel="stylesheet" href="/global.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    
+    #login-error:not(.hidden) {
+      animation: slideInDown 0.3s ease-out, shake 0.5s ease-in-out;
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9375rem;
+    }
+    
+    #login-error:not(.hidden)::before {
+      content: '⚠️';
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    
+    #login-error.hidden {
+      display: none;
+    }
+
+    #forgot-msg:not(.hidden) {
+      animation: slideInDown 0.3s ease-out;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9375rem;
+    }
+
+    #forgot-msg.alert-danger:not(.hidden) {
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #forgot-msg.alert-danger:not(.hidden)::before {
+      content: '❌';
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    #forgot-msg.alert-success:not(.hidden) {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #forgot-msg.alert-success:not(.hidden)::before {
+      content: '✅';
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    #forgot-msg.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F172A 0%,#1E293B 50%,#0F172A 100%);">
+  <div style="width:100%;max-width:420px;padding:1.5rem;">
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div style="width:56px;height:56px;background:var(--color-primary);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.75rem;margin:0 auto 1rem;">🔑</div>
+      <h1 style="color:white;font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;">LicenseFlow</h1>
+      <p style="color:rgba(255,255,255,0.45);font-size:0.875rem;margin-top:0.25rem;">Sistema de gestión de licencias</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.06);border-radius:var(--radius-lg);padding:1.75rem;border:1px solid rgba(255,255,255,0.1);">
+      <div id="tab-login">
+        <h2 style="color:white;font-size:1.1rem;font-weight:600;margin-bottom:1.5rem;">Iniciar sesión</h2>
+        <div id="login-error" class="hidden"></div>
+        <div class="form-group">
+          <label class="form-label" style="color:rgba(255,255,255,0.7);">Usuario o correo electrónico</label>
+          <input type="text" id="identifier" class="form-control" placeholder="admin@licenseflow.com" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:white;" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="color:rgba(255,255,255,0.7);">Contraseña</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:white;" />
+        </div>
+        <button id="login-btn" class="btn btn-primary" style="width:100%;justify-content:center;padding:0.7rem;font-size:0.9375rem;margin-top:0.5rem;">
+          Iniciar sesión
+        </button>
+        <div style="text-align:center;margin-top:1rem;">
+          <button id="forgot-link" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:0.8125rem;cursor:pointer;text-decoration:underline;">
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>
+      </div>
+
+      <div id="tab-forgot" class="hidden">
+        <button id="back-login" style="background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:0.8rem;margin-bottom:1rem;">← Volver</button>
+        <h2 style="color:white;font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;">Recuperar contraseña</h2>
+        <div id="forgot-msg" class="hidden"></div>
+        <div class="form-group">
+          <label class="form-label" style="color:rgba(255,255,255,0.7);">Correo electrónico</label>
+          <input type="email" id="forgot-email" class="form-control" placeholder="correo@empresa.com" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:white;" />
+        </div>
+        <button id="forgot-btn" class="btn btn-primary" style="width:100%;justify-content:center;padding:0.7rem;">Enviar instrucciones</button>
+      </div>
+    </div>
+    <p style="text-align:center;color:rgba(255,255,255,0.25);font-size:0.75rem;margin-top:1.5rem;">© 2026 LicenseFlow</p>
+  </div>
+
+ <script src="/api.js" is:inline></script>
+  <script>
+    if (window._api.getToken() && window._api.getUser()) {
+      window.location.href = '/dashboard';
+    }
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('login-btn');
+      const errEl = document.getElementById('login-error');
+      const identifier = document.getElementById('identifier').value.trim();
+      const password = document.getElementById('password').value;
+      errEl.classList.add('hidden');
+      if (!identifier || !password) { errEl.textContent = 'Completa todos los campos.'; errEl.classList.remove('hidden'); return; }
+      btn.textContent = 'Iniciando...'; btn.disabled = true;
+      try {
+        const data = await window._api.login(identifier, password);
+        window._api.setSession(data.token, data.user);
+        window.location.href = '/dashboard';
+      } catch (err) {
+        errEl.textContent = err.message || 'Error al iniciar sesión.';
+        errEl.classList.remove('hidden');
+        btn.textContent = 'Iniciar sesión'; btn.disabled = false;
+      }
+    });
+
+    document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-btn').click(); });
+    document.getElementById('forgot-link').addEventListener('click', () => { document.getElementById('tab-login').classList.add('hidden'); document.getElementById('tab-forgot').classList.remove('hidden'); });
+    document.getElementById('back-login').addEventListener('click', () => { document.getElementById('tab-forgot').classList.add('hidden'); document.getElementById('tab-login').classList.remove('hidden'); });
+
+    document.getElementById('forgot-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('forgot-btn');
+      const msgEl = document.getElementById('forgot-msg');
+      const email = document.getElementById('forgot-email').value.trim();
+      if (!email) return;
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      try {
+        const data = await window._api.forgotPassword(email);
+        msgEl.className = 'alert alert-success'; msgEl.textContent = data.message; msgEl.classList.remove('hidden');
+      } catch (err) {
+        msgEl.className = 'alert alert-danger'; msgEl.textContent = err.message; msgEl.classList.remove('hidden');
+      } finally { btn.disabled = false; btn.textContent = 'Enviar instrucciones'; }
+    });
+  </script>
+</body>
+</html>

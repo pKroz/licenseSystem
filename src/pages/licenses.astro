@@ -1,0 +1,225 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+---
+<AppLayout title="Licencias">
+  <div class="flex items-center gap-2 mb-4" style="flex-wrap:wrap;">
+    <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Buscar licencia, cliente..." /></div>
+    <select id="filter-status" class="form-control" style="width:auto;">
+      <option value="">Todos los estados</option>
+      <option value="active">Activas</option>
+      <option value="expired">Vencidas</option>
+      <option value="suspended">Suspendidas</option>
+      <option value="cancelled">Canceladas</option>
+    </select>
+    <select id="filter-product" class="form-control" style="width:auto;"><option value="">Todos los productos</option></select>
+    <div class="ml-auto flex gap-2">
+      <button class="btn btn-secondary btn-sm" id="export-btn">📥 Exportar</button>
+      <button class="btn btn-primary" id="create-license-btn">+ Nueva licencia</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Licencias</span><span class="badge badge-info" id="count-badge">—</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Clave</th><th>Cliente</th><th>Producto</th><th>Plan</th><th>Estado</th><th>Vencimiento</th><th>Días</th><th>Acciones</th></tr></thead>
+        <tbody id="licenses-table"><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--color-text-muted);">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal crear/editar -->
+  <div class="modal-overlay hidden" id="license-modal">
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-header"><span class="modal-title" id="modal-title">Nueva licencia</span><button class="btn btn-ghost btn-sm" id="close-modal">✕</button></div>
+      <div class="modal-body">
+        <div id="modal-error" class="alert alert-danger hidden"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Cliente *</label><select id="f-client" class="form-control"><option value="">Seleccionar</option></select></div>
+          <div class="form-group"><label class="form-label">Producto *</label><select id="f-product" class="form-control"><option value="">Seleccionar</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Plan *</label>
+            <select id="f-plan" class="form-control"><option value="">Seleccionar</option><option value="básico">Básico</option><option value="estándar">Estándar</option><option value="profesional">Profesional</option><option value="empresarial">Empresarial</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Estado</label>
+            <select id="f-status" class="form-control"><option value="active">Activa</option><option value="suspended">Suspendida</option><option value="cancelled">Cancelada</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Fecha inicio *</label><input type="date" id="f-starts" class="form-control" /></div>
+          <div class="form-group"><label class="form-label">Fecha vencimiento *</label><input type="date" id="f-expires" class="form-control" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Máx. usuarios</label><input type="number" id="f-users" class="form-control" min="1" placeholder="Sin límite" /></div>
+          <div class="form-group"><label class="form-label">Máx. dispositivos</label><input type="number" id="f-devices" class="form-control" min="1" placeholder="Sin límite" /></div>
+        </div>
+        <div class="form-group"><label class="form-label">Nota</label><textarea id="f-notes" class="form-control" rows="2" placeholder="Motivo del cambio..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-modal">Cancelar</button>
+        <button class="btn btn-primary" id="save-license-btn">Guardar licencia</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal detalle -->
+  <div class="modal-overlay hidden" id="detail-modal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header"><span class="modal-title">Detalle de licencia</span><button class="btn btn-ghost btn-sm" id="close-detail">✕</button></div>
+      <div class="modal-body" id="detail-body">Cargando...</div>
+    </div>
+  </div>
+
+  <script>
+    let allLicenses = [];
+    let editId = null;
+
+    const statusBadge = s => {
+      const map = {active:'badge-active',expired:'badge-expired',suspended:'badge-suspended',cancelled:'badge-cancelled'};
+      const labels = {active:'Activa',expired:'Vencida',suspended:'Suspendida',cancelled:'Cancelada'};
+      return `<span class="badge ${map[s]||''}">${labels[s]||s}</span>`;
+    };
+
+    async function loadLicenses() {
+      const filters = {};
+      const status = document.getElementById('filter-status').value;
+      const pid = document.getElementById('filter-product').value;
+      if (status) filters.status = status;
+      if (pid) filters.product_id = pid;
+      try {
+        allLicenses = await window._api.getLicenses(filters);
+        renderTable(allLicenses);
+      } catch(err) { window.showToast('Error: ' + err.message, 'danger'); }
+    }
+
+    function renderTable(licenses) {
+      document.getElementById('count-badge').textContent = licenses.length + ' licencias';
+      const tbody = document.getElementById('licenses-table');
+      if (!licenses.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔑</div>Sin licencias</div></td></tr>'; return; }
+      tbody.innerHTML = licenses.map(l => {
+        const d = l.days_remaining;
+        const dc = d < 0 ? 'color:var(--color-danger);font-weight:600;' : d <= 7 ? 'color:var(--color-danger);font-weight:600;' : d <= 30 ? 'color:var(--color-warning);font-weight:600;' : 'color:var(--color-success);';
+        return `<tr>
+          <td><span class="license-key" style="font-size:0.75rem;">${l.license_key}</span></td>
+          <td>${l.client_name||'—'}</td><td>${l.product_name||'—'}</td>
+          <td style="text-transform:capitalize;">${l.plan}</td>
+          <td>${statusBadge(l.status)}</td>
+          <td style="font-size:0.8rem;">${l.expires_at ? new Date(l.expires_at).toLocaleDateString('es-PE') : '—'}</td>
+          <td style="font-size:0.8rem;${dc}">${d !== null ? (d < 0 ? 'Vencida' : d+'d') : '—'}</td>
+          <td><div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm" onclick="viewLicense(${l.id})">👁</button>
+            <button class="btn btn-ghost btn-sm" onclick="editLicense(${l.id})">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--color-danger);" onclick="cancelLicense(${l.id},'${l.license_key}')">🗑</button>
+          </div></td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('search-input').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      renderTable(allLicenses.filter(l => l.license_key.toLowerCase().includes(q) || (l.client_name||'').toLowerCase().includes(q) || (l.product_name||'').toLowerCase().includes(q)));
+    });
+
+    document.getElementById('filter-status').addEventListener('change', loadLicenses);
+    document.getElementById('filter-product').addEventListener('change', loadLicenses);
+
+    async function loadSelects() {
+      const [clients, products] = await Promise.all([window._api.getClients(), window._api.getProducts()]);
+      const cSel = document.getElementById('f-client');
+      clients.forEach(c => { const o = document.createElement('option'); o.value=c.id; o.textContent=c.company_name; cSel.appendChild(o); });
+      const pSel = document.getElementById('f-product');
+      const pFilter = document.getElementById('filter-product');
+      products.forEach(p => {
+        [pSel, pFilter].forEach(sel => { const o = document.createElement('option'); o.value=p.id; o.textContent=p.name; sel.appendChild(o); });
+      });
+    }
+
+    document.getElementById('create-license-btn').addEventListener('click', () => openModal(null));
+    document.getElementById('close-modal').addEventListener('click', closeModal);
+    document.getElementById('cancel-modal').addEventListener('click', closeModal);
+    document.getElementById('license-modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+    function openModal(id) {
+      editId = id;
+      document.getElementById('modal-title').textContent = id ? 'Editar licencia' : 'Nueva licencia';
+      document.getElementById('modal-error').classList.add('hidden');
+      if (!id) {
+        ['f-client','f-product','f-plan','f-notes'].forEach(i => document.getElementById(i).value='');
+        ['f-users','f-devices'].forEach(i => document.getElementById(i).value='');
+        document.getElementById('f-status').value='active';
+        document.getElementById('f-starts').value = new Date().toISOString().slice(0,10);
+        document.getElementById('f-expires').value = new Date(Date.now()+365*86400000).toISOString().slice(0,10);
+      }
+      document.getElementById('license-modal').classList.remove('hidden');
+    }
+    function closeModal() { document.getElementById('license-modal').classList.add('hidden'); editId=null; }
+
+    document.getElementById('save-license-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('save-license-btn');
+      const errEl = document.getElementById('modal-error');
+      errEl.classList.add('hidden');
+      const payload = {
+        client_id: document.getElementById('f-client').value,
+        product_id: document.getElementById('f-product').value,
+        plan: document.getElementById('f-plan').value,
+        status: document.getElementById('f-status').value,
+        starts_at: document.getElementById('f-starts').value,
+        expires_at: document.getElementById('f-expires').value,
+        max_users: document.getElementById('f-users').value||null,
+        max_devices: document.getElementById('f-devices').value||null,
+        notes: document.getElementById('f-notes').value,
+      };
+      btn.disabled=true; btn.textContent='Guardando...';
+      try {
+        if (editId) { await window._api.updateLicense(editId, payload); window.showToast('Licencia actualizada','success'); }
+        else { const r = await window._api.createLicense(payload); window.showToast('Licencia creada: '+r.license_key,'success'); }
+        closeModal(); loadLicenses();
+      } catch(err) { errEl.textContent=err.message; errEl.classList.remove('hidden'); }
+      finally { btn.disabled=false; btn.textContent='Guardar licencia'; }
+    });
+
+    window.viewLicense = async (id) => {
+      document.getElementById('detail-modal').classList.remove('hidden');
+      document.getElementById('detail-body').innerHTML='<div class="spinner" style="margin:2rem auto;"></div>';
+      try {
+        const l = await window._api.getLicense(id);
+        const d = l.days_remaining;
+        const dc = d<0?'color:var(--color-danger);':'';
+        document.getElementById('detail-body').innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+            <div><div class="form-label">Clave</div><span class="license-key" style="font-size:0.75rem;">${l.license_key}</span></div>
+            <div><div class="form-label">Estado</div>${statusBadge(l.status)}</div>
+            <div><div class="form-label">Cliente</div>${l.client_name}</div>
+            <div><div class="form-label">Producto</div>${l.product_name}</div>
+            <div><div class="form-label">Plan</div>${l.plan}</div>
+            <div><div class="form-label">Días restantes</div><span style="${dc}">${d!==null?d+'d':'—'}</span></div>
+            <div><div class="form-label">Inicio</div>${l.starts_at}</div>
+            <div><div class="form-label">Vencimiento</div>${l.expires_at}</div>
+          </div>
+          <hr class="divider"/>
+          <div style="font-weight:600;font-size:0.875rem;margin-bottom:0.75rem;">Historial</div>
+          ${l.history?.length ? l.history.map(h=>`<div style="display:flex;gap:10px;padding:0.5rem 0;border-bottom:1px solid var(--color-border);">
+            <span style="font-size:0.75rem;color:var(--color-text-muted);white-space:nowrap;">${new Date(h.created_at).toLocaleString('es-PE')}</span>
+            <span style="font-size:0.8125rem;"><strong>${h.changed_by_name||'Sistema'}</strong>: ${h.action}</span>
+          </div>`).join('') : '<div class="text-muted text-sm">Sin historial.</div>'}`;
+      } catch(err) { document.getElementById('detail-body').innerHTML=`<div class="alert alert-danger">${err.message}</div>`; }
+    };
+
+    document.getElementById('close-detail').addEventListener('click', () => document.getElementById('detail-modal').classList.add('hidden'));
+    window.editLicense = (id) => openModal(id);
+    window.cancelLicense = async (id, key) => {
+      if (!confirm(`¿Cancelar la licencia ${key}?`)) return;
+      try { await window._api.cancelLicense(id); window.showToast('Licencia cancelada','success'); loadLicenses(); }
+      catch(err) { window.showToast('Error: '+err.message,'danger'); }
+    };
+
+    document.getElementById('export-btn').addEventListener('click', () => {
+      const csv = [['Clave','Cliente','Producto','Plan','Estado','Vencimiento','Días'],...allLicenses.map(l=>[l.license_key,l.client_name,l.product_name,l.plan,l.status,l.expires_at,l.days_remaining])].map(r=>r.map(v=>`"${v??''}"`).join(',')).join('\n');
+      const a = document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='licencias.csv'; a.click();
+    });
+
+    loadSelects();
+    loadLicenses();
+  </script>
+</AppLayout>
