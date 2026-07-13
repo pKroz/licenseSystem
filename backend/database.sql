@@ -1,9 +1,5 @@
 -- LicenseFlow Database Schema
 -- Run this in phpMyAdmin or MySQL CLI
-
-CREATE DATABASE IF NOT EXISTS licenseflow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE licenseflow_db;
-
 -- Users
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
