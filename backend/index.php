@@ -1,5 +1,5 @@
 <?php
-header('Access-Control-Allow-Origin: license.devits.pe');
+header('Access-Control-Allow-Origin: https://license.devits.pe');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
 header('Content-Type: application/json');
