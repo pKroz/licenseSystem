@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost/licenseflow';
+const BASE_URL = 'http://license-backend-ep7lvu-090bb2-187-77-242-74.sslip.io/licenseflow';
 
 function getToken() { return localStorage.getItem('lf_token'); }
 function getUser() { const u = localStorage.getItem('lf_user'); return u ? JSON.parse(u) : null; }
