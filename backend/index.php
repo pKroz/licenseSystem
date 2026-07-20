@@ -1,4 +1,17 @@
 <?php
+// =====================================================
+// CABECERAS DE SEGURIDAD (nuevo)
+// =====================================================
+header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'");
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+
+// =====================================================
+// CORS (tu bloque original, sin cambios)
+// =====================================================
 header('Access-Control-Allow-Origin: https://license.devits.pe');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
@@ -27,6 +40,14 @@ $method = $_SERVER['REQUEST_METHOD'];
 $segments = explode('/', trim($uri, '/'));
 $resource = $segments[0] ?? '';
 $id = $segments[1] ?? null;
+
+// (nuevo) Evita que las respuestas de la API queden cacheadas
+// resuelve las alertas "Recuperado de la Caché" y
+// "Reexaminar las Directivas de Control de Caché"
+if ($resource !== 'validate') {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+}
 
 try {
     switch ($resource) {
@@ -67,5 +88,5 @@ try {
     }
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    echo json_encode(['error' => 'Internal server error']);
 }
