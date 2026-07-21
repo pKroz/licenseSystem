@@ -4,6 +4,15 @@ RUN docker-php-ext-install pdo pdo_mysql
 
 RUN a2enmod rewrite
 
+# =====================================================
+# HARDENING DE SEGURIDAD (nuevo)
+# Resuelve alerta ZAP: "El servidor filtra información
+# de versión a través del campo Server del encabezado"
+# =====================================================
+RUN echo "ServerTokens Prod" >> /etc/apache2/apache2.conf \
+    && echo "ServerSignature Off" >> /etc/apache2/apache2.conf \
+    && echo "expose_php = Off" >> /usr/local/etc/php/conf.d/hardening.ini
+
 COPY . /var/www/html/
 
 RUN chown -R www-data:www-data /var/www/html
